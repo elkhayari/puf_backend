@@ -330,6 +330,7 @@ def getDevice(request):
 
     received_frame, rem_frames = receive_instance.receive_frame(attempts, rem_frames)
     # TODO retrieve the instance from the payload/request
+    print(received_frame)
     received_frame = Frame(received_frame[0])
 
     payload = data2str(received_frame.data)
@@ -436,9 +437,9 @@ def startTest(currentRunningTest, data):
         payload = { "HEADER":"TEST",
                     "paramsSize":0,
                     "testType" : "readLatencyTest",
-                    "initialValue": "0x55",
-                    "startAddress": 0,
-                    "stopAddress": 1,
+                    "initialValue": data["initialValue"],
+                    "startAddress": data["startAddress"],
+                    "stopAddress": data["stopAddress"],
                     "dataSetupTime": currentRunningTest["dataSetupTime"] }
         
         # convert the dictionary to a JSON string
