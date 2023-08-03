@@ -1,13 +1,13 @@
 from django.urls import path, include
-
 from . import views
-from .views import TestViewSet, TestViewOperationsSet, ExperimentsSet
 from rest_framework.routers import DefaultRouter
+from django.conf import settings
+from django.conf.urls.static import static
 
 router = DefaultRouter()
-router.register('tests', TestViewSet, basename="tests")
-router.register('testOp', TestViewOperationsSet, basename="testOp")
-router.register('experiment', ExperimentsSet, basename="experiment")
+router.register('tests', views.TestViewSet, basename="tests")
+router.register('testOp', views.TestViewOperationsSet, basename="testOp")
+router.register('experiment', views.ExperimentsSet, basename="experiment")
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -20,12 +20,8 @@ urlpatterns = [
     path('getImage/<str:file_name>', views.getImage),
     path('getHeatmap/', views.getHeatmap),
     path('getMetrics/', views.getMetrics),
-    path('getEvaluationsTest/', views.EvaluationSet)
-
-
-    #path('getStmTest/<int:id>', views.test),
-    #path('tests/', views.getTests, name="tests"),
-    #path('test/<int:pk>', views.testDetails)
-    #path('test/<str:pk>/', views.getTest, name="test")
-
-]
+    # path('getEvaluationsTest/', views.EvaluationSet),
+    path('posts/', views.PostView.as_view(), name='posts_list'),
+    path('progress/', views.progress, name='progress'),
+    # path('uploadMeasurments/', views.uploadMeasurments)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

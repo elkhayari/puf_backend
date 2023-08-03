@@ -16,13 +16,28 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from puf_server import views
+
+from channels.routing import ProtocolTypeRouter, URLRouter
+from device_detection.routing import websocket_urlpatterns
+from django.core.asgi import get_asgi_application
+
 
 router = routers.DefaultRouter()
-#router.register(r'devices', views.DeviceView, 'device')
+# router.register(r'devices', views.DeviceView, 'device')
 
 urlpatterns = [
     path('apii/', include(router.urls)),
     path('api/', include('puf_server.urls')),
+    path('testsApi/', include('tests.urls')),
+    path('uploadMeasurmentsApi/', include('upload_measurments.urls')),
+    path('brokerApi/', include('tasks.urls')),
     path('admin/', admin.site.urls),
+    path('deviceApi/', include('device_detection.urls'))
 ]
+
+application = ProtocolTypeRouter(
+    {
+        "http": get_asgi_application(),
+        "websocket": URLRouter(websocket_urlpatterns),
+    }
+)

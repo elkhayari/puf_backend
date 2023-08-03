@@ -28,11 +28,18 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.0.222']
 
+CELERY_APP = 'pufBackend.celery'
+
 
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+    'channels',
+    'channels_redis',
     "puf_server.apps.PufServerConfig",
+    "tests.apps.TestsConfig",
+    "upload_measurments.apps.UploadMeasurmentsConfig",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -41,6 +48,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "corsheaders",
     "rest_framework",
+    'tasks.apps.TasksConfig',
+    "device_detection.apps.DeviceDetectionConfig"
 ]
 
 MIDDLEWARE = [
@@ -73,9 +82,10 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'pufBackend.wsgi.application'
+# WSGI_APPLICATION = 'pufBackend.wsgi.application'
 
-
+# Daphne
+ASGI_APPLICATION = 'pufBackend.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
@@ -123,8 +133,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-MEDIA_URL = '/images/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'images')
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = '/media/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
@@ -136,3 +146,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000'
 ]
+
+BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            # Replace with your desired host and port
+            'hosts': [('127.0.0.1', 6379)],
+        },
+    },
+}
+
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels.layers.InMemoryChannelLayer",
+#     },
+# }

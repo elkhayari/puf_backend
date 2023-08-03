@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, FramTests, Tests, TestOperations, Image, Experiments
+from .models import Post, FramTests, Tests, TestOperations, Image, Experiments, UploadMeasurments
 
 
 # This code specifies the model to work with
@@ -37,4 +37,12 @@ class ImageSerializers(serializers.ModelSerializer):
 class ExperimentsSerializers(serializers.ModelSerializer):
     class Meta:
         model = Experiments
+        fields = '__all__'
+
+# todo delete this
+
+
+class UploadMeasurmentsSerializers(serializers.ModelSerializer):
+    class Meta:
+        model = UploadMeasurments
         fields = '__all__'
