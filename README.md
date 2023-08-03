@@ -23,5 +23,14 @@ pip install -r requirements.txt
 
 python manage.py runserver
 
+6. To start the Celery worker, run the following command in the project root directory:
+
+celery -A pufBackend worker  -l info
+
+7. Start Daphne
+Daphne is an ASGI server used to run Django applications with asynchronous support. To start Daphne, run the following command in the project root directory:
+
+daphne pufBackend.asgi:application --port 8089
+
 ## Project Structure
 // TODO
