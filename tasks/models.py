@@ -27,3 +27,13 @@ class EvaluationTask(models.Model):
             self.finish_time = timezone.now()
 
         super().save(*args, **kwargs)
+
+
+class Heatmap(models.Model):
+    evaluation_result_id = models.ForeignKey(
+        EvaluationTask, on_delete=models.CASCADE)
+    # Field to store array of measurement IDs
+    measurement_ids = models.JSONField()
+    initial_value = models.TextField()
+    heatmap_binary_image = models.BinaryField()
+    # ForeignKey to Result model with related_name as 'id'

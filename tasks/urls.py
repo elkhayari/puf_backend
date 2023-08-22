@@ -1,6 +1,6 @@
 # urls.py
 from django.urls import path
-from tasks.views import trigger_task, task_status, tasks, get_result_by_id, delete_result_by_id
+from tasks.views import trigger_task, task_status, tasks, get_result_by_id, delete_result_by_id, generate_heatmaps, get_existing_heatmap
 
 urlpatterns = [
     path('trigger-evaluation/', trigger_task, name='trigger_task'),
@@ -10,6 +10,10 @@ urlpatterns = [
          get_result_by_id, name='get_result_by_id'),
     path('delete-result/<int:id>/', delete_result_by_id,
          name='delete_result_by_id'),
+    path('generate-heatmaps/', generate_heatmaps,
+         name='generate_heatmaps'),
+    path('existing-heatmap-ids/', get_existing_heatmap,
+         name='get_existing_heatmap'),
 
 
 

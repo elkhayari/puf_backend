@@ -1,6 +1,7 @@
 from collections import Counter
 import csv
 import statistics
+import math
 
 
 class PUFProcessor:
@@ -125,28 +126,44 @@ class PUFProcessor:
         ones = 0
         zeros = 0
         gaps = 0
-        for data in input_data:
-            if data == -1:
+        for value in input_data:
+            if value == -1:
                 gaps += 1
             else:
-                ret = PUFProcessor.get_ones_and_zeros_in_byte(data)
+                ret = PUFProcessor.get_ones_and_zeros_in_byte(value)
                 ones += ret[0]
                 zeros += ret[1]
         return ones, zeros, gaps
 
     @staticmethod
     def get_ones_and_zeros_in_byte(value):
-        """
-
-        :param value:
-        :return:
-        """
         one_ctr = 0
         for i in range(8):
             if (pow(2, i) & value) != 0:
                 one_ctr += 1
 
         return one_ctr, 8 - one_ctr
+
+    @staticmethod
+    def bytes_to_bit_matrix(input_data):
+        # Calculate the size of the matrix
+        # Multiply by 8 because each byte has 8 bits
+        n = int(math.ceil(math.sqrt(len(input_data) * 8)))
+        print(n)
+        # Initialize an empty matrix
+        matrix = [[0 for _ in range(n)] for _ in range(n)]
+
+        # Convert bytes to bits and fill the matrix
+        bits = [
+            bit for byte_val in input_data for bit in byte_to_binary(byte_val)]
+
+        for i in range(n):
+            for j in range(n):
+                idx = i * n + j
+                if idx < len(bits):
+                    matrix[i][j] = bits[idx]
+
+        return matrix
 
 
 '''
@@ -183,3 +200,8 @@ def remove_first_slash(path):
     if path.startswith('/'):
         path = path.lstrip('/')
     return path
+
+
+def byte_to_binary(byte_val):
+    """Convert a byte to its 8-bit binary representation."""
+    return [int(bit) for bit in format(byte_val, '08b')]
