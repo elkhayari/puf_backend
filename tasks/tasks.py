@@ -14,10 +14,9 @@ from puf_server.utils.PUFProcessor import PUFProcessor
 from puf_server.utils.PUFPlots import PUFPlots
 from .models import Heatmap
 from .serializers import HeatmapSerializer
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-import io
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pufBackend.settings')
 
@@ -110,48 +109,22 @@ def send_device_notification():
 
 @app.task
 def generate_heatmap_operation(data, evaluation_id):
+    channel_layer = get_channel_layer()
     print('Start generating the heatmaps')
-    # print(data)
+    print(data)
     for sublist in data:
         print('sublist -----')
         if len(sublist) == 1:
-            file_name, start_addr, stop_addr = sublist[0]['fileName'], sublist[
-                0]['startAddress'], sublist[0]['stopAddress']
-            print(file_name, start_addr, stop_addr)
-            values = PUFProcessor.read_and_store_input_data(
-                file_name, start_addr, stop_addr)
-            print(values)
-            matrix = PUFProcessor.bytes_to_bit_matrix(values)
-            print(matrix)
-            binary_data = PUFPlots.create_heatmap_array(matrix)
-            print('--BinaryData--')
-            print(type(binary_data))
-            print(len(binary_data))
-            try:
-                heatmap = Heatmap.objects.create(
-                    measurement_ids=sublist[0]['id'],
-                    initial_value=sublist[0]['initialValue'],
-                    heatmap_binary_image=binary_data,
-                    evaluation_result_id_id=evaluation_id
-                )
-            except Exception as e:
-                print(f"Error saving to database: {e}")
-
-            """ heatmap_data = {"measurement_ids": sublist[0]['id'],
-                            "initial_value": sublist[0]['initialValue'],
-                            "heatmap_binary_image": binary_data,
-                            "evaluation_result_id": evaluation_id
-                            }
-            serializer = HeatmapSerializer(data=heatmap_data)
-            if serializer.is_valid():
-                serializer.save()
-                print(serializer.data) """
+            generate_and_save_heatmap(sublist[0], evaluation_id)
 
         else:
             summed_data = None
             ids = []
-            for entry in sublist:
-                df = pd.read_csv(entry['fileName'])
+            print('list of measurments')
+            for measurment in sublist:
+
+                print(measurment)
+                generate_and_save_heatmap(measurment, evaluation_id)
                 """ if summed_data is None:
                     summed_data = df
                 else:
@@ -159,10 +132,46 @@ def generate_heatmap_operation(data, evaluation_id):
                 binary_data = generate_heatmap(df, entry['id'])
                 heatmap = Heatmap(id=entry['id'], initialvalue=entry['initialValue'], heatmap_image=binary_data)
                 heatmap.save()"""
-                ids.append(entry['id'])
+                ids.append(measurment['id'])
             """binary_data = generate_heatmap(summed_data, "Summed Heatmap for Sublist")
             heatmap = Heatmap(id=",".join(ids), initialvalue=sublist[0]['initialValue'], heatmap_image=binary_data)
             heatmap.save() """
             print(ids)
         print('----------')
     time.sleep(5)
+    async_to_sync(channel_layer.group_send)(
+        "heatmap_group",
+        {
+            "type": "heatmap.update",
+            "message": "Heatmap generation complete"
+        }
+    )
+
+
+def generate_and_save_heatmap(measurment, evaluation_id):
+    channel_layer = get_channel_layer()
+    file_name, start_addr, stop_addr = measurment[
+        'fileName'], measurment['startAddress'], measurment['stopAddress']
+    print(file_name, start_addr, stop_addr)
+    values = PUFProcessor.read_and_store_input_data(
+        file_name, start_addr, stop_addr)
+
+    matrix = PUFProcessor.bytes_to_bit_matrix(values)
+    binary_data = PUFPlots.create_heatmap_array(matrix)
+
+    try:
+        heatmap = Heatmap.objects.create(
+            measurement_ids=measurment['id'],
+            initial_value=measurment['initialValue'],
+            heatmap_binary_image=binary_data,
+            evaluation_result_id_id=evaluation_id
+        )
+        async_to_sync(channel_layer.group_send)(
+                "heatmap_group",
+                {
+                    "type": "heatmap.update",
+                    "message": f"Heatmap for measurement {measurment['id']} generated"
+                }
+            )
+    except Exception as e:
+        print(f"Error saving to database: {e}")

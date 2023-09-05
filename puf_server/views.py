@@ -51,7 +51,7 @@ import matplotlib.pyplot as plt
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 
-from .utils.PUFProcessor import PUFProcessor
+from .utils.PUFProcessor import PUFProcessor, byte_to_binary
 
 READING = "READING"
 WRITING = "WRITING"
@@ -398,6 +398,7 @@ def getDevice(request):
 
 
 def multiple_clients_requests(request):
+    prGreen(">> In multiple_clients")
     print("🚀 ~ file: views.py:359 ~ request.data:", request.data)
     start_time = time.time()
     # TODO add try catch finally == state = open
@@ -406,14 +407,14 @@ def multiple_clients_requests(request):
     testData = request.data.get('testData')
     memoryData = request.data.get('memoryData')
     deviceData = request.data.get('deviceData')
+    iterations = 2
 
     redis.set("stm32:state", "open")
-    prGreen(">> In multiple_clients")
 
     # Create a new queue
     test_queue = queue.Queue()
 
-    for iteration in range(1):
+    for iteration in range(1, iterations + 1):
         prGreen(f">> Iteration {iteration}")
         dataSetupTime_list = [
             dst for dst in testData["dataSetupTime"].split('-')]
@@ -421,7 +422,7 @@ def multiple_clients_requests(request):
         start_dst = int(dataSetupTime_list[0])
         stop_dst = int(dataSetupTime_list[-1]) - 1
 
-        dataSetupTimes_range = [d for d in range(start_dst, stop_dst, -1)]
+        dataSetupTimes_range = [d for d in range(start_dst, stop_dst, -10)]
         print(dataSetupTimes_range)
 
         for dst in dataSetupTimes_range:
@@ -543,6 +544,7 @@ def startTest(currentRunningTest, testData, deviceData):
     while redis.get("stm32:fram:test0:state") != FINISH:
         test_status = redis.get("stm32:fram:test0:state")
         prYellow(f">>> Attempt {attempts+1} {test_status}")
+        start_time = time.time()
         if attempts > 1 and test_status == "START":
             uart_instance.write(write_read_command.raw)
         received_frames, rem_frames = receive_instance.receive_frame(
@@ -557,10 +559,9 @@ def startTest(currentRunningTest, testData, deviceData):
 
             elif single_frame.raw[1] == 239:
                 counter += 1
-                prGreen(raw)
                 values.append(single_frame.raw[3])
-                if counter % 100 == 0:
-                    print(f"counter == {counter}")
+                # if counter % 100 == 0:
+                # print(f"counter == {counter}")
 
             else:
                 print("flag not recognized")
@@ -574,13 +575,14 @@ def startTest(currentRunningTest, testData, deviceData):
 
     redis.set("stm32:state", "open")
 
+    currentRunningTest["elapsedTime"] = time.time() - start_time
     currentRunningTest["status"] = "completed"
 
     updateTestOp(currentRunningTest, testType, currentRunningTest["id"])
 
     time.sleep(2)
 
-    file_name = "memory-yZy" + \
+    file_name = "eval_" + \
         str(currentRunningTest['memoryLabel']) + "_" + str(currentRunningTest['memoryModel']) + str(testData['voltage']) + \
         "V-" + "_dst-" + \
         str(currentRunningTest['dataSetupTime']) + \
@@ -759,7 +761,7 @@ def getMetrics(data):
                          "memoryBrand", "memoryModel"]
 
     initialValue_group_keys = ["initialValue"]
-    challenge_group_keys = ["dataSetupTime", "voltage"]  # Dynamic
+    challenge_group_keys = ["dataSetupTime"]  # Dynamic
 
     prGreen("-----------------UNIFORMITY--------------------")
     uniformity = []
@@ -916,11 +918,19 @@ def getMetrics(data):
                                             row1.fileName, row1.startAddress, row1.stopAddress)
                                         puf_response_2 = PUFProcessor.read_and_store_input_data(
                                             row2.fileName, row2.startAddress, row2.stopAddress)
+                                        puf_response_1_bits = [
+                                            bit for byte_val in puf_response_1 for bit in byte_to_binary(byte_val)]
+                                        puf_response_2_bits = [
+                                            bit for byte_val in puf_response_2 for bit in byte_to_binary(byte_val)]
                                         # print(len(puf_response_1))
                                         # print(len(puf_response_2))
-                                        if len(puf_response_1) == len(puf_response_2):
+                                        """ print(row.fileName)
+                                        print(puf_response_1[0:100])
+                                        print(row.fileName)
+                                        print(puf_response_2[0:100]) """
+                                        if len(puf_response_1_bits) == len(puf_response_2_bits):
                                             hd_list_single_device_challenge.append(
-                                                PUFProcessor.hamming_distance(puf_response_1, puf_response_2))
+                                                PUFProcessor.hamming_distance(puf_response_1_bits, puf_response_2_bits))
 
                                 # print(hd_list_single_device_challenge)
                                 data = {"Robustness": True,
@@ -1028,35 +1038,46 @@ def getMetrics(data):
                                 # TODO: calculate uniqueness
                                 # prGreen(
                                 # '################## LOGIC #######################\n')
-
+                                stop = True
                                 for measurment_1 in group_challenge.itertuples(index=True):
                                     for measurment_2 in group_challenge.loc[measurment_1.Index+1:].itertuples(index=True):
                                         # prGreen(f"{measurment_1}")
                                         # print('vs')
                                         # prGreen(f"{measurment_2}")
+                                        # Only proceed if the memoryLabels are different
+                                        if measurment_1.memoryLabel != measurment_2.memoryLabel:
 
-                                        puf_response_1 = PUFProcessor.read_and_store_input_data(
-                                            measurment_1.fileName, measurment_1.startAddress, measurment_1.stopAddress)
-                                        # print(puf_response_1)
-                                        puf_response_2 = PUFProcessor.read_and_store_input_data(
-                                            measurment_2.fileName, measurment_2.startAddress, measurment_2.stopAddress)
-                                        # print(puf_response_1)
-                                        # print(puf_response_2)
-                                        hamming_distance = PUFProcessor.hamming_distance(
-                                            puf_response_1, puf_response_2)
-                                        # prGreen(hamming_distance)
-                                        inter_hamming_distance = {"chip1": measurment_1.memoryLabel,
-                                                                  "iterationChip1": measurment_1.iteration,
-                                                                  "chip2": measurment_2.memoryLabel,
-                                                                  "iterationChip2": measurment_2.iteration,
-                                                                  "hammingDistance": hamming_distance}
-                                        challengeObject["inter_hamming_distances"].append(
-                                            inter_hamming_distance)
+                                            puf_response_1 = PUFProcessor.read_and_store_input_data(
+                                                measurment_1.fileName, measurment_1.startAddress, measurment_1.stopAddress)
+                                            # print(puf_response_1)
+                                            puf_response_2 = PUFProcessor.read_and_store_input_data(
+                                                measurment_2.fileName, measurment_2.startAddress, measurment_2.stopAddress)
+                                            puf_response_1_bits = [
+                                                bit for byte_val in puf_response_1 for bit in byte_to_binary(byte_val)]
+                                            puf_response_2_bits = [
+                                                bit for byte_val in puf_response_2 for bit in byte_to_binary(byte_val)]
+
+                                            hamming_distance = PUFProcessor.hamming_distance(
+                                                puf_response_1_bits, puf_response_2_bits)
+                                            # prGreen(hamming_distance)
+                                            inter_hamming_distance = {"chip1": measurment_1.memoryLabel,
+                                                                      "iterationChip1": measurment_1.iteration,
+                                                                      "chip2": measurment_2.memoryLabel,
+                                                                      "iterationChip2": measurment_2.iteration,
+                                                                      "hammingDistance": hamming_distance}
+                                            challengeObject["inter_hamming_distances"].append(
+                                                inter_hamming_distance)
                                 # prGreen(
                                     # '\n################################################\n')
-                                challengeObject["min_inter_hamming_distances"] = 0
-                                challengeObject["max_inter_hamming_distances"] = 0
-                                challengeObject["avg_inter_hamming_distances"] = 0
+
+                                hamming_distances = [
+                                    obj['hammingDistance'] for obj in challengeObject["inter_hamming_distances"]]
+                                challengeObject["min_inter_hamming_distances"] = min(
+                                    hamming_distances)
+                                challengeObject["max_inter_hamming_distances"] = max(
+                                    hamming_distances)
+                                challengeObject["avg_inter_hamming_distances"] = statistics.mean(
+                                    hamming_distances)
                             else:
                                 prYellow("!! No Data For This challenge")
 

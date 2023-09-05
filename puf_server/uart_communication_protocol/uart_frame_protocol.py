@@ -23,10 +23,11 @@ class Frame:
         return crc_data
 
     def check_valid(self, frame):
-        #print(f'\033[91m>> check frame validity \033[00m {frame}')
+        # print(f'\033[91m>> check frame validity \033[00m {frame}')
         if frame[0] != 171:
+            print(frame)
             raise InvalidError("wrong start (Header 1)", frame)
-            pass
+
         elif frame[1] != 205 and frame[1] != 239:
             raise InvalidError("wrong start (Header 2)", frame)
         elif frame[-2] != 225:
@@ -42,7 +43,7 @@ class Frame:
         else:
             length = frame[2]
             data = frame[3: (length + 3)]
-            #data = frame[3: -2]
+            # data = frame[3: -2]
             ''' TODO
                 crc_array = frame[-5:-1]
                 if crc_array != Frame.get_crc(data):

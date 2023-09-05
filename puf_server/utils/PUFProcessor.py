@@ -50,7 +50,7 @@ class PUFProcessor:
             if c1 == -1 or c2 == -1:
                 l = l-1
             else:
-                if c1 != c2:
+                if c1 == c2:
                     sum = sum + 1
 
         return 1 - sum / l

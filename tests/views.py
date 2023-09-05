@@ -163,7 +163,8 @@ def get_measurments_by_status(status):
             'startAddress': queryset.testId.startAddress,
             'stopAddress': queryset.testId.stopAddress,
             'voltage': queryset.testId.voltage,
-            'temperature': queryset.testId.temperature
+            'temperature': queryset.testId.temperature,
+            'iterations': queryset.testId.iterations
 
         }
 
@@ -181,7 +182,9 @@ def get_measurments_by_status(status):
             'startAddress': queryset.testId.startAddress,
             'stopAddress': queryset.testId.stopAddress,
             'voltage': queryset.testId.voltage,
-            'temperature': queryset.testId.temperature
+            'temperature': queryset.testId.temperature,
+            'iterations': queryset.testId.iterations
+
         }
 
         serilized_data.update(additional_data)
@@ -198,7 +201,9 @@ def get_measurments_by_status(status):
             'startAddress': queryset.testId.startAddress,
             'stopAddress': queryset.testId.stopAddress,
             'voltage': queryset.testId.voltage,
-            'temperature': queryset.testId.temperature
+            'temperature': queryset.testId.temperature,
+            'iterations': queryset.testId.iterations
+
         }
 
         serilized_data.update(additional_data)
@@ -215,7 +220,9 @@ def get_measurments_by_status(status):
             'startAddress': queryset.testId.startAddress,
             'stopAddress': queryset.testId.stopAddress,
             'voltage': queryset.testId.voltage,
-            'temperature': queryset.testId.temperature
+            'temperature': queryset.testId.temperature,
+            'iterations': queryset.testId.iterations
+
         }
 
         serilized_data.update(additional_data)

@@ -7,10 +7,6 @@ from django.utils import timezone
 class SharedTestsModel(models.Model):
     title = models.CharField(max_length=100, default="defualt title")
     testType = models.CharField(max_length=100, default='default test')
-    # memoryType = models.CharField(max_length=30, null=True)
-    # memoryBrand = models.CharField(max_length=50, null=True)
-    # memoryModel = models.CharField(max_length=50, null=True)
-    # memoryLabel = models.CharField(max_length=30, null=True)
     initialValue = models.CharField(max_length=10, default="0x55")
     startAddress = models.FloatField(default=0)
     stopAddress = models.FloatField(default=100)
@@ -18,6 +14,7 @@ class SharedTestsModel(models.Model):
     temperature = models.FloatField(default=23)
     dataSetupTime = models.CharField(max_length=50, default="15")
     createdAt = models.DateTimeField(default=timezone.now)
+    iterations = models.IntegerField(default=1, null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -66,6 +63,7 @@ class RowHammeringTestsModel(SharedTestsModel):
 
 
 class SharedMeasurmentTestsModel(models.Model):
+    # id = models.AutoField(primary_key=True)
     status = models.CharField(max_length=100)
     startedBy = models.CharField(max_length=50)
     startedAt = models.DateTimeField(default=timezone.now)
@@ -80,6 +78,7 @@ class SharedMeasurmentTestsModel(models.Model):
     boardLabel = models.CharField(max_length=30, null=True)
     boardSerial = models.CharField(max_length=30, null=True)
     boardName = models.CharField(max_length=30, null=True)
+    elapsedTime = models.FloatField(null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -93,8 +92,11 @@ class ReliabilityMeasurmentTestsModel(SharedMeasurmentTestsModel):
     testId = models.ForeignKey(ReliabilityTestsModel, on_delete=models.CASCADE)
 
     def save(self, *args, **kwargs):
-        print(">> SAVE ReliabilityTestModel.")
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # Generate the ID
+        # custom_id = f'REL_meas_{self.id}'
+        # self.id = custom_id
+        # super(SharedMeasurmentTestsModel, self).save(
+        # *args, **kwargs)  # Save the custom ID
 
 
 class WriteLatencyMeasurmentTestsModel(SharedMeasurmentTestsModel):
@@ -102,16 +104,23 @@ class WriteLatencyMeasurmentTestsModel(SharedMeasurmentTestsModel):
         WriteLatencyTestsModel, on_delete=models.CASCADE)
 
     def save(self, *args, **kwargs):
-        print(">> SAVE WriteLatencyTestModel.")
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # Generate the ID
+        # custom_id = f'WRI_meas_{self.id}'
+        # self.id = custom_id
+        # super(SharedMeasurmentTestsModel, self).save(
+        # *args, **kwargs)  # Save the custom ID
 
 
 class ReadLatencyMeasurmentTestsModel(SharedMeasurmentTestsModel):
     testId = models.ForeignKey(ReadLatencyTestsModel, on_delete=models.CASCADE)
 
     def save(self, *args, **kwargs):
-        print(">> SAVE ReadLatencyTestModel.")
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # Generate the ID
+        """ custom_id = f'REA_meas_{self.id}'
+        self.id = custom_id
+        super(SharedMeasurmentTestsModel, self).save(
+            *args, **kwargs)  # Save the custom ID
+        """
 
 
 class RowHammeringMeasurmentTestsModel(SharedMeasurmentTestsModel):
@@ -119,5 +128,9 @@ class RowHammeringMeasurmentTestsModel(SharedMeasurmentTestsModel):
         RowHammeringTestsModel, on_delete=models.CASCADE)
 
     def save(self, *args, **kwargs):
-        print(">> SAVE RowHammeringTestModel.")
-        super().save(*args, **kwargs)
+        super().save(*args, **kwargs)  # Generate the ID
+        """ custom_id = f'ROO_meas_{self.id}'
+        self.id = custom_id
+        super(SharedMeasurmentTestsModel, self).save(
+            *args, **kwargs)  # Save the custom ID
+        """

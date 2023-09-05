@@ -105,7 +105,9 @@ def get_existing_heatmap(request):
             evaluation_result_id=evaluation_id, measurement_ids__in=measurement_ids)
         print(heatmaps)
 
-        data = [{"id": heatmap.id, "heatmap_binary_image": base64.b64encode(heatmap.heatmap_binary_image).decode('utf-8')}
+        data = [{"id": heatmap.id,
+                 "measurement_ids": heatmap.measurement_ids,
+                "heatmap_binary_image": base64.b64encode(heatmap.heatmap_binary_image).decode('utf-8')}
                 for heatmap in heatmaps]
 
         # my_evaluation = EvaluationTask.objects.get(id=id)
