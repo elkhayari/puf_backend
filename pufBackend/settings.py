@@ -26,7 +26,9 @@ SECRET_KEY = 'django-insecure-_nmypww&*z8l!p(*mlam&96wfq&y#(cbgala!i(e2il=^t4!&)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.0.222']
+# ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.0.222']
+ALLOWED_HOSTS = ['*']
+
 
 CELERY_APP = 'pufBackend.celery'
 
