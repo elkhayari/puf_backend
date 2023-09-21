@@ -8,6 +8,7 @@ from celery import shared_task
 from puf_server.views import getMetrics
 import json
 import numpy as np
+import pandas as pd
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from puf_server.utils.PUFProcessor import PUFProcessor
@@ -116,26 +117,13 @@ def generate_heatmap_operation(data, evaluation_id):
         print('sublist -----')
         if len(sublist) == 1:
             generate_and_save_heatmap(sublist[0], evaluation_id)
-
         else:
-            summed_data = None
             ids = []
             print('list of measurments')
             for measurment in sublist:
-
                 print(measurment)
                 generate_and_save_heatmap(measurment, evaluation_id)
-                """ if summed_data is None:
-                    summed_data = df
-                else:
-                    summed_data += df
-                binary_data = generate_heatmap(df, entry['id'])
-                heatmap = Heatmap(id=entry['id'], initialvalue=entry['initialValue'], heatmap_image=binary_data)
-                heatmap.save()"""
                 ids.append(measurment['id'])
-            """binary_data = generate_heatmap(summed_data, "Summed Heatmap for Sublist")
-            heatmap = Heatmap(id=",".join(ids), initialvalue=sublist[0]['initialValue'], heatmap_image=binary_data)
-            heatmap.save() """
             print(ids)
         print('----------')
     time.sleep(5)
@@ -153,25 +141,97 @@ def generate_and_save_heatmap(measurment, evaluation_id):
     file_name, start_addr, stop_addr = measurment[
         'fileName'], measurment['startAddress'], measurment['stopAddress']
     print(file_name, start_addr, stop_addr)
-    values = PUFProcessor.read_and_store_input_data(
-        file_name, start_addr, stop_addr)
+    # Check if a heatmap with the same measurement_ids already exists
+    existing_heatmap = Heatmap.objects.filter(
+        measurement_ids=measurment['id']).exists()
 
-    matrix = PUFProcessor.bytes_to_bit_matrix(values)
-    binary_data = PUFPlots.create_heatmap_array(matrix)
+    if existing_heatmap:
+        print(f"Heatmap for measurement {measurment['id']} already exists.")
+    else:
+        values = PUFProcessor.read_and_store_input_data(
+            file_name, start_addr, stop_addr)
 
-    try:
-        heatmap = Heatmap.objects.create(
-            measurement_ids=measurment['id'],
-            initial_value=measurment['initialValue'],
-            heatmap_binary_image=binary_data,
-            evaluation_result_id_id=evaluation_id
-        )
-        async_to_sync(channel_layer.group_send)(
+        matrix = PUFProcessor.bytes_to_bit_matrix(values)
+        print(type(matrix))
+        print(len(matrix))
+        binary_data = PUFPlots.create_heatmap_array(matrix)
+
+        try:
+            heatmap = Heatmap.objects.create(
+                measurement_ids=measurment['id'],
+                initial_value=measurment['initialValue'],
+                heatmap_binary_image=binary_data,
+                evaluation_result_id_id=evaluation_id
+            )
+            async_to_sync(channel_layer.group_send)(
                 "heatmap_group",
                 {
-                    "type": "heatmap.update",
-                    "message": f"Heatmap for measurement {measurment['id']} generated"
+                    "type": "heatmap_update",
+                    "message": "Heatmap for measurement generated"
                 }
             )
-    except Exception as e:
-        print(f"Error saving to database: {e}")
+            print('sent')
+        except Exception as e:
+            print(f"Error saving to database: {e}")
+
+
+@app.task
+def generate_heatmap_robustness_operation(robustness_measurments):
+    for item in robustness_measurments:
+        for key, value in item.items():
+            print(f"Group Key: {key}")
+            # Check if a heatmap with the same measurement_ids already exists
+            existing_heatmap = Heatmap.objects.filter(
+                measurement_ids=key).exists()
+            if existing_heatmap:
+                print(f"Heatmap for measurement {key} already exists.")
+            else:
+                matrix_list = []
+                initialValue, startAddress, stopAddress = value[
+                    'initialValue'], value['startAddress'], value['stopAddress']
+                evaluationId = value['evaluationId']
+                print(initialValue, startAddress, stopAddress)
+                for measurements in value['id_filename_list']:
+                    id, filename = measurements['id'], measurements['fileName']
+                    print(f"Data for {id} is {filename}:\n")
+
+                    try:
+                        meas_values = PUFProcessor.read_and_store_input_data(
+                            filename, startAddress, stopAddress)
+                        matrix = PUFProcessor.bytes_to_bit_matrix(meas_values)
+                        matrix_list.append(matrix)
+
+                    except Exception as e:
+                        print(f"Error reading CSV file {filename}:", e)
+
+                robustness_matrix = calculate_robustness(matrix_list)
+                print(len(robustness_matrix))
+                print(type(robustness_matrix))
+                print(robustness_matrix.shape)
+                binary_data = PUFPlots.plot_robustness_heatmap(
+                    robustness_matrix)
+
+                # resized_matrix = np.resize(robustness_matrix, (200, 200))
+                # binary_data = PUFPlots.plot_robustness_heatmap(resized_matrix)
+                print(type(binary_data))
+                try:
+                    Heatmap.objects.create(
+                        measurement_ids=key,
+                        initial_value=initialValue,
+                        heatmap_binary_image=binary_data,
+                        evaluation_result_id_id=evaluationId
+                    )
+
+                    print('sent')
+                except Exception as e:
+                    print(f"Error saving to database: {e}")
+
+
+def calculate_robustness(matrix_list):
+    # Stack matrices along a new axis
+    stacked_matrices = np.stack(matrix_list, axis=-1)
+
+    # Calculate the mean along the new axis
+    robustness_matrix = np.mean(stacked_matrices, axis=-1)
+
+    return robustness_matrix

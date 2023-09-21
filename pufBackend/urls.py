@@ -19,6 +19,7 @@ from rest_framework import routers
 
 from channels.routing import ProtocolTypeRouter, URLRouter
 from device_detection.routing import websocket_urlpatterns
+from tasks.routing import heatmap_websocket_urlpatterns
 from django.core.asgi import get_asgi_application
 
 
@@ -35,9 +36,17 @@ urlpatterns = [
     path('deviceApi/', include('device_detection.urls'))
 ]
 
-application = ProtocolTypeRouter(
+""" application = ProtocolTypeRouter(
     {
         "http": get_asgi_application(),
-        "websocket": URLRouter(websocket_urlpatterns),
+        "websocket": URLRouter(websocket_urlpatterns)
     }
-)
+) """
+
+
+""" application = ProtocolTypeRouter(
+    {
+        "http": get_asgi_application(),
+        "websocket": URLRouter(heatmap_websocket_urlpatterns)
+    }
+) """

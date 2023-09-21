@@ -4,7 +4,7 @@ from .models import EvaluationTask
 import base64
 import json
 from django.http import JsonResponse
-from .tasks import calculate_metrics, generate_heatmap_operation
+from .tasks import calculate_metrics, generate_heatmap_operation, generate_heatmap_robustness_operation
 from rest_framework.decorators import api_view
 from .serializer import EvaluationResultSerializer
 from rest_framework.response import Response
@@ -100,6 +100,7 @@ def generate_heatmaps(request):
 def get_existing_heatmap(request):
     evaluation_id = request.GET.get('evaluation_id')
     measurement_ids = json.loads(request.GET.get('measurement_ids'))
+
     try:
         heatmaps = Heatmap.objects.filter(
             evaluation_result_id=evaluation_id, measurement_ids__in=measurement_ids)
@@ -110,13 +111,56 @@ def get_existing_heatmap(request):
                 "heatmap_binary_image": base64.b64encode(heatmap.heatmap_binary_image).decode('utf-8')}
                 for heatmap in heatmaps]
 
-        # my_evaluation = EvaluationTask.objects.get(id=id)
-        # print(my_evaluation.result)
-        # metrics = my_evaluation.metricsResult
-        # print(metrics)
-        # data = {
-        #   'id': 1,
-        # }
+        return JsonResponse(data, safe=False)
+        # return JsonResponse(response)
+    except EvaluationTask.DoesNotExist:
+        return JsonResponse({'error': 'Heatmap does not exists'}, status=404)
+
+
+@api_view(["GET"])
+def check_heatmap_ids(request):
+    meas_id = request.GET.get('meas_id')
+    exists = Heatmap.objects.filter(measurement_ids=meas_id).exists()
+    return JsonResponse({'exists': exists})
+
+
+@api_view(["POST"])
+def generate_rebustness_heatmap(request):
+    # Assuming the request payload contains the task name
+    data_string = json.loads(request.body)
+    print(type(data_string))
+
+    """ evaluation_title = json.loads(request.body)['title']
+
+    # Create a new Task instance and save it
+    taskObject = EvaluationTask.objects.create(title=evaluation_title)
+
+    # Enqueue the long_operation task using Celery
+    task = calculate_metrics.delay(taskObject.id, data)
+    print(task) """
+
+    task = generate_heatmap_robustness_operation.delay(data_string)
+
+    return JsonResponse({'status': 'started'})
+
+
+@api_view(["GET"])
+def get_robustness_heatmap(request):
+    print('hello from get_robustness_heatmap')
+    evaluation_id = request.GET.get('evaluation_id')
+    measurement_groupKey = request.GET.get('measurement_key')
+    print(evaluation_id)
+    print(measurement_groupKey)
+    try:
+        heatmaps = Heatmap.objects.filter(
+            evaluation_result_id=evaluation_id, measurement_ids=measurement_groupKey)
+        print(heatmaps)
+
+        data = [{"id": heatmap.id,
+                 "measurement_ids": heatmap.measurement_ids,
+                "heatmap_binary_image": base64.b64encode(heatmap.heatmap_binary_image).decode('utf-8')}
+                for heatmap in heatmaps]
+
         return JsonResponse(data, safe=False)
         # return JsonResponse(response)
     except EvaluationTask.DoesNotExist:

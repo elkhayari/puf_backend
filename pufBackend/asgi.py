@@ -13,15 +13,18 @@ import os
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
 from device_detection.routing import websocket_urlpatterns
+from tasks.routing import heatmap_websocket_urlpatterns
+
 from channels.auth import AuthMiddlewareStack
 from channels.security.websocket import AllowedHostsOriginValidator
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'pufBackend.settings')
 
+all_websocket_urlpatterns = websocket_urlpatterns + heatmap_websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     'http': get_asgi_application(),
     "websocket": AllowedHostsOriginValidator(
-        AuthMiddlewareStack(URLRouter(websocket_urlpatterns))),
+        AuthMiddlewareStack(URLRouter(all_websocket_urlpatterns))),
 })

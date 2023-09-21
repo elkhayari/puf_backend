@@ -911,6 +911,10 @@ def getMetrics(data):
 
                             # -#-#-#
                             hd_list_single_device_challenge = []
+                            # Create list of objects with id and fileName
+                            id_filename_list = [
+                                {'id': row['id'], 'fileName': row['fileName']} for _, row in group_challenge.iterrows()]
+
                             if len(group_challenge) > 1:
                                 for row1 in group_challenge.itertuples(index=True):
                                     for row2 in group_challenge.loc[row1.Index+1:].itertuples(index=True):
@@ -928,17 +932,22 @@ def getMetrics(data):
                                         print(puf_response_1[0:100])
                                         print(row.fileName)
                                         print(puf_response_2[0:100]) """
+                                        print(len(puf_response_1_bits))
+                                        print(len(puf_response_2_bits))
                                         if len(puf_response_1_bits) == len(puf_response_2_bits):
+
                                             hd_list_single_device_challenge.append(
                                                 PUFProcessor.hamming_distance(puf_response_1_bits, puf_response_2_bits))
 
-                                # print(hd_list_single_device_challenge)
+                                print(hd_list_single_device_challenge)
+
                                 data = {"Robustness": True,
                                         "hammingDistance": {
                                             "min": min(hd_list_single_device_challenge),
                                             "max": max(hd_list_single_device_challenge),
                                             "avg": statistics.mean(hd_list_single_device_challenge)
-                                        }}
+                                        },
+                                        "id_filename_list": id_filename_list}
                                 # chip_measurements.append(data)
 
                             else:
@@ -1032,11 +1041,15 @@ def getMetrics(data):
                             challengeObject = {}
                             challengeObject["challenge"] = key_challenge_group
                             challengeObject["inter_hamming_distances"] = []
-                            if len(group_challenge) > 1:
+
+                            # Check unique chips
+                            unique_chips = group_challenge['memoryLabel'].nunique(
+                            )
+                            print('unique labels', unique_chips)
+                            if len(group_challenge) > 1 and unique_chips > 1:
                                 # print(tabulate(group_challenge.applymap(
                                 # truncate_func), headers='keys', tablefmt='psql'))
-                                # TODO: calculate uniqueness
-                                # prGreen(
+
                                 # '################## LOGIC #######################\n')
                                 stop = True
                                 for measurment_1 in group_challenge.itertuples(index=True):

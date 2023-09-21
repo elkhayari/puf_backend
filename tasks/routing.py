@@ -1,6 +1,12 @@
 from django.urls import re_path
 from . import consumers
+from channels.routing import ProtocolTypeRouter, URLRouter
 
-websocket_urlpatterns = [
-    re_path(r'ws/some_path/$', consumers.HeatmapConsumer.as_asgi()),
+
+heatmap_websocket_urlpatterns = [
+    re_path('ws/heatmap/', consumers.HeatmapConsumer.as_asgi()),
 ]
+
+channel_routing = {
+    'websocket': consumers.HeatmapConsumer.as_asgi(),
+}
