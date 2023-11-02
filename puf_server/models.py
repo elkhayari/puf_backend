@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 # Create your models here.
 
-
+""" 
 class Post(models.Model):
     title = models.CharField(max_length=300)
     body = models.TextField()
@@ -35,7 +35,7 @@ class FramTests(models.Model):
 class FramResults(models.Model):
     result_id = models.ForeignKey(FramTests, on_delete=models.CASCADE)
     index = models.IntegerField(blank=True, null=True)
-    value = models.IntegerField(blank=True, null=True)
+    value = models.IntegerField(blank=True, null=True) """
 
 
 class Tests(models.Model):

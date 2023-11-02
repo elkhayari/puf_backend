@@ -6,5 +6,4 @@ class DeviceDetectionConfig(AppConfig):
     name = 'device_detection'
 
     def ready(self):
-        print('ready')
         from .models import TtyDeviceModel  # Import your TtyDeviceModel here

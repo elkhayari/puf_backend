@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Post, FramResults, FramTests, fram, Tests
+from .models import Tests
 
 # Register your models here.
 # admin.site.register(Post)
@@ -12,7 +12,6 @@ from .models import Post, FramResults, FramTests, fram, Tests
 # admin.site.register(fram)
 
 admin.site.register(Tests)
-admin.site.register(Post)
 
 # Replace the above with the code below to
 # have Django auto-generate your slug when

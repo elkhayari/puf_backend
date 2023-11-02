@@ -35,7 +35,7 @@ class ReliabilityTestsModel(SharedTestsModel):
 
 
 class WriteLatencyTestsModel(SharedTestsModel):
-    initialValue_2 = models.CharField(max_length=10, default="0xAA")
+    initialValue_1 = models.CharField(max_length=10, default="0x55")
 
     def save(self, *args, **kwargs):
         print(">> SAVE WriteLatencyTestModel.")
@@ -49,9 +49,9 @@ class ReadLatencyTestsModel(SharedTestsModel):
 
 
 class RowHammeringTestsModel(SharedTestsModel):
-    initialValue_2 = models.CharField(max_length=10, default="0xAA")
+    initialValue_1 = models.CharField(max_length=10, default="0xAA")
     rowOffset = models.IntegerField(default=1)
-    iterations = models.IntegerField(default=1)
+    HammeringIterations = models.IntegerField(default=1)
 
     def save(self, *args, **kwargs):
         print(">> SAVE RowHammeringTestModel.")
@@ -102,6 +102,7 @@ class ReliabilityMeasurmentTestsModel(SharedMeasurmentTestsModel):
 class WriteLatencyMeasurmentTestsModel(SharedMeasurmentTestsModel):
     testId = models.ForeignKey(
         WriteLatencyTestsModel, on_delete=models.CASCADE)
+    initialValue_1 = models.CharField(max_length=10, default="0x55")
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Generate the ID
@@ -126,6 +127,9 @@ class ReadLatencyMeasurmentTestsModel(SharedMeasurmentTestsModel):
 class RowHammeringMeasurmentTestsModel(SharedMeasurmentTestsModel):
     testId = models.ForeignKey(
         RowHammeringTestsModel, on_delete=models.CASCADE)
+    initialValue_1 = models.CharField(max_length=10, default="0xAA")
+    rowOffset = models.IntegerField(default=1)
+    HammeringIterations = models.IntegerField(default=1)
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)  # Generate the ID

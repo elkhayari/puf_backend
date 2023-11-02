@@ -19,7 +19,6 @@ regex_pattern = re.compile(
 
 
 class TestViewSet(viewsets.ViewSet):
-    print("HEllo from tests app")
 
     def list(self, request):
 

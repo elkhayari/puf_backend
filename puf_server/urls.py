@@ -21,7 +21,6 @@ urlpatterns = [
     path('getHeatmap/', views.getHeatmap),
     path('getMetrics/', views.getMetrics),
     # path('getEvaluationsTest/', views.EvaluationSet),
-    path('posts/', views.PostView.as_view(), name='posts_list'),
     path('progress/', views.progress, name='progress'),
     # path('uploadMeasurments/', views.uploadMeasurments)
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

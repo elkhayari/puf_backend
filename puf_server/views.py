@@ -13,7 +13,6 @@ import json
 import csv
 from pprint import pprint
 import pandas as pd
-from .models import Post
 import numpy as np
 import queue
 import statistics
@@ -40,10 +39,10 @@ import os
 
 # Models
 from .models import Tests, TestOperations, Experiments
-from .serializers import TestsSerializer, PostSerializer, TestOperationsSerializers, ExperimentsSerializers
+from .serializers import TestsSerializer, TestOperationsSerializers, ExperimentsSerializers
 from tests.models import ReliabilityMeasurmentTestsModel, ReadLatencyMeasurmentTestsModel, WriteLatencyMeasurmentTestsModel, RowHammeringMeasurmentTestsModel
 from tests.serializers import ReliabilityMeasurmentTestsModelSerializer, ReadLatencyMeasurmentTestsModelSerializer, WriteLatencyMeasurmentTestsModelSerializer, RowHammeringMeasurmentTestsModelSerializer
-
+from device_detection.models import TtyDeviceModel
 import io
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -73,24 +72,6 @@ def prYellow(skk): print("\033[93m {}\033[00m" .format(skk))
 regex_pattern = re.compile(
     r'(read|write|row hammering|reliability).+', re.IGNORECASE)
 
-
-class PostView(APIView):
-    def get(self, request, *args, **kwargs):
-        posts = Post.objects.all()
-        serializer = PostSerializer(posts, many=True)
-        return Response(serializer.data)
-
-    def post(self, request, *args, **kwargs):
-        print(request.data)
-        posts_serializer = PostSerializer(data=request.data, many=True)
-        if posts_serializer.is_valid():
-            print("Before .save()")
-            posts_serializer.save()
-            print("After .save()")
-            return Response(posts_serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            print('error', posts_serializer.errors)
-            return Response(posts_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # TODO delete this class after double check
 
@@ -343,7 +324,6 @@ def writeReadToMem(request):
     prGreen("# WriteReadToMem #")
     prGreen("###################")
 
-    print(request.data)
     thread = threading.Thread(
         target=multiple_clients_requests, args=(request,))
     try:
@@ -399,17 +379,21 @@ def getDevice(request):
 
 def multiple_clients_requests(request):
     prGreen(">> In multiple_clients")
-    print("🚀 ~ file: views.py:359 ~ request.data:", request.data)
     start_time = time.time()
-    # TODO add try catch finally == state = open
-    # redis.set("stm32:state", "busy")
-    # TODO to be deleted
+
     testData = request.data.get('testData')
     memoryData = request.data.get('memoryData')
     deviceData = request.data.get('deviceData')
-    iterations = 2
+    iterations = testData["iterations"]
 
     redis.set("stm32:state", "open")
+
+    print("device Data", deviceData)
+
+    device = TtyDeviceModel.objects.get(
+        serial_number=deviceData["serial_number"])
+    device.is_busy = 1
+    device.save()
 
     # Create a new queue
     test_queue = queue.Queue()
@@ -451,12 +435,18 @@ def multiple_clients_requests(request):
                     serializer = ReadLatencyMeasurmentTestsModelSerializer(
                         data=data)
                 elif match.group(1).lower() == 'write'.lower():
+                    data['initialValue_1'] = testData['initialValue_1']
                     serializer = WriteLatencyMeasurmentTestsModelSerializer(
                         data=data)
                 elif match.group(1).lower() == 'reliability'.lower():
                     serializer = ReliabilityMeasurmentTestsModelSerializer(
                         data=data)
                 elif match.group(1).lower() == 'row hammering'.lower():
+                    data['initialValue_1'] = testData['initialValue_1']
+                    data['rowOffset'] = testData['rowOffset']
+                    data['HammeringIterations'] = testData['HammeringIterations']
+                    print('data in if')
+                    print(data)
                     serializer = RowHammeringMeasurmentTestsModelSerializer(
                         data=data)
                 else:
@@ -469,12 +459,19 @@ def multiple_clients_requests(request):
 
             test_queue.put(data_test)
 
-        while not test_queue.empty():
-            currentRunningTest = test_queue.get()
-            print(currentRunningTest)
-            prYellow(
-                f">> Running test: dst = {currentRunningTest['dataSetupTime']} Iteration {currentRunningTest['iteration']}")
+    while not test_queue.empty():
+        currentRunningTest = test_queue.get()
+        print(currentRunningTest)
+        prYellow(
+            f">> Running test: dst = {currentRunningTest['dataSetupTime']} Iteration {currentRunningTest['iteration']}")
+        try:
             startTest(currentRunningTest, testData, deviceData)
+        except:
+            device = TtyDeviceModel.objects.get(
+                serial_number=deviceData["serial_number"])
+            device.is_busy = 0
+            device.save()
+            redis.set("stm32:state", "open")
 
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -482,6 +479,10 @@ def multiple_clients_requests(request):
     print(f"Time taken: {elapsed_time:.2f} seconds")
     print(f"***************************************")
     redis.set("stm32:state", "open")
+    device = TtyDeviceModel.objects.get(
+        serial_number=deviceData["serial_number"])
+    device.is_busy = 0
+    device.save()
 
 
 def startTest(currentRunningTest, testData, deviceData):
@@ -502,7 +503,6 @@ def startTest(currentRunningTest, testData, deviceData):
     prYellow(f">> test: {currentRunningTest}")
     print('---')
     prGreen(f">>> data: {testData}")
-    print()
 
     ##################################################
 
@@ -513,6 +513,8 @@ def startTest(currentRunningTest, testData, deviceData):
     receive_instance = Receive(uart_instance)
 
     json_payload = get_test_payload(testData, currentRunningTest)
+
+    print('generated payload')
     pprint(json_payload)
 
     # write_read_command = Command.build_custom_payload(currentRunningTest["dataSetupTime"])
@@ -596,30 +598,33 @@ def startTest(currentRunningTest, testData, deviceData):
 def get_test_payload(testData, currentRunningTest):
 
     match = regex_pattern.search(testData['testType'])
+    print('get test payload')
     print(match.group(1))
-
-    # If a match is found, set the testType accordingly
-    if match:
-        if match.group(1).lower() == "reliability":
-            testType = "reliabilityTest"
-        elif match.group(1).lower() == "read":
-            testType = "readLatencyTest"
-        elif match.group(1).lower() == "write":
-            testType = "writeLatencyTest"
-        elif match.group(1).lower() == "row hammering":
-            testType = "rowHammingTest"
-        else:
-            testType = "notDefined"
 
     payload = {
         "HEADER": "TEST",
-        "paramsSize": 0,
-        "testType": testType,
         "initialValue": testData["initialValue"],
         "startAddress": testData["startAddress"],
         "stopAddress": testData["stopAddress"],
         "dataSetupTime": currentRunningTest["dataSetupTime"]
     }
+
+    # If a match is found, set the testType accordingly
+    if match:
+        if match.group(1).lower() == "reliability":
+            payload["testType"] = "reliabilityTest"
+        elif match.group(1).lower() == "read":
+            payload["testType"] = "readLatencyTest"
+        elif match.group(1).lower() == "write":
+            payload["testType"] = "writeLatencyTest"
+            payload["initialValue_1"] = testData['initialValue_1']
+        elif match.group(1).lower() == "row hammering":
+            payload["testType"] = "rowHammingTest"
+            payload['initialValue_1'] = testData['initialValue_1']
+            payload['rowOffset'] = testData['rowOffset']
+            payload['HammeringIterations'] = testData['HammeringIterations']
+        else:
+            payload["testType"] = "testNotDefined"
 
     # convert the dictionary to a JSON string and return
     return json.dumps(payload)
@@ -694,29 +699,7 @@ def getHeatmap(request):
     print(matrix)
 
     # Create a heatmap using Seaborn
-    #
     sns.heatmap(matrix,  cmap='hot',  fmt='.2f')
-    # cbar = ax.collections[0].colorbar
-    # cbar.set_label('Value')
-    # Define the custom color palette
-    '''colors = [(1.0, 1.0, 1.0), (0.0, 0.0, 0.0)]  # white and black
-    cmap = sns.color_palette(colors)
-
-    #   Create the heatmap
-    ax = sns.heatmap(values, cmap=cmap, cbar=False,
-                     square=True, annot=True, fmt='.0f')
-
-    # Set the ticks and labels
-    ax.set_xticks(np.arange(values.shape[0]) + 0.5)
-    ax.set_xticklabels(np.arange(1, values.shape[0] + 1))
-    ax.set_yticks(np.arange(values.shape[1]) + 0.5)
-    ax.set_yticklabels(np.arange(1, values.shape[1] + 1))
-
-    # Add the legend
-    legend = ax.legend(title="Value", labels=[
-                       "0", "1"], loc="bottom", ncol=2, bbox_to_anchor=(0.5, -0.2), frameon=False)
-    for i, text in enumerate(legend.get_texts()):
-        text.set_color(colors[i]) '''
 
     # Save the plot as an image to a file
     buffer = io.BytesIO()
